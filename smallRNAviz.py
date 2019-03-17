@@ -2,7 +2,7 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 # specify page formatting template
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
@@ -12,20 +12,26 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # specify app components, their data types and their starting values
 app.layout = html.Div([
-	dcc.Input(id="input-1", type="text", value="mouse"),
-	dcc.Input(id="input-2", type="text", value="brain"),
-	html.Div(id="output")
+	dcc.Input(id="input-1-state", type="text", value="mouse"),
+	dcc.Input(id="input-2-state", type="text", value="brain"),
+	html.Button(id="submit-button", n_clicks=0, children="Submit"),
+	html.Div(id="output-state")
 ])
 
 # specify which input values the app should listen for
 @app.callback(
-	Output("output", "children"),
-	[Input("input-1", "value"), Input("input-2", "value")]
+	Output("output-state", "children"),
+	[Input("submit-button", "n_clicks")],
+	[State("input-1-state", "value"), State("input-2-state", "value")]
 )
 
 # the callback function (i.e. what happens after one of the inputs changes)
-def update_output(input1, input2):
-	return 'Input 1 is "{}" and Input 2 is "{}"'.format(input1, input2)
+def update_output(n_clicks, input1, input2):
+	return '''
+		The button has been pressed {} times,
+		Input 1 is {},
+		and Input 2 is {}
+	'''.format(n_clicks, input1, input2)
 
 # launch the server when the program runs
 if __name__ == "__main__":
