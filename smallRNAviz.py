@@ -4,23 +4,30 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 
+import base64
+import io
 import pandas as pd
 import plotly.graph_objs as go
 
 # specify page formatting template
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
-# read in data
+# # read in data
+# sRNA_data = pd.DataFrame({
+# 	"Length": range(17,30),
+# 	"A_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
+# 	"C_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
+# 	"G_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
+# 	"U_sense": [10,20,70,200,210,170,70,10,1000,2000,2000,1000,100],
+# 	"A_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
+# 	"C_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
+# 	"G_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
+# 	"U_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-1000,-2000,-2000,-1000,-100]
+# })
+
+# create dataframe without any read counts to establish plotting area limits
 sRNA_data = pd.DataFrame({
-	"Length": range(17,30),
-	"A_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
-	"C_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
-	"G_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
-	"U_sense": [10,20,70,200,210,170,70,10,1000,2000,2000,1000,100],
-	"A_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
-	"C_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
-	"G_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
-	"U_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-1000,-2000,-2000,-1000,-100]
+	"Length": range(17,30)
 })
 
 # instantiate app object
@@ -28,6 +35,23 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # specify app components, their data types and their starting values
 app.layout = html.Div([
+	html.Div([
+		dcc.Upload(
+			id = "upload-data",
+			children = html.Div(["Drag and drop or ", html.A("Select file")]),
+			style = {
+				"width": "100%",
+				"height": "60px",
+				"lineHeight": "60px",
+				"borderWidth": "1px",
+				"borderStyle": "dashed",
+				"borderRadius": "5px",
+				"textAlign": "center",
+				"margin": "10px"
+			},
+			multiple = False
+		)
+	]),
 	html.Div([
 		html.Div([
 			dcc.RadioItems(
@@ -38,7 +62,7 @@ app.layout = html.Div([
 			)
 		], style={'width': '48%', 'display': 'inline-block'})
 	]),
-	dcc.Graph(id = "graph-with-slider"),
+	dcc.Graph(id = "sRNA_graph"),
 	dcc.RangeSlider(
 		id = "length-slider",
 		min = sRNA_data["Length"].min(),
@@ -48,17 +72,27 @@ app.layout = html.Div([
 	),
 ])
 
+# function to parse a user CSV file
+def parse_user_input(contents):
+	content_string = contents.split(",")[1]
+	decoded = base64.b64decode(content_string)
+	df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+	return df
+
 # specify which input values the app should listen for, and what it should output
 @app.callback(
-	Output("graph-with-slider", "figure"),
-	[Input("length-slider", "value"),
+	Output("sRNA_graph", "figure"),
+	[Input("upload-data", "contents"),
+	Input("length-slider", "value"),
 	Input("strand-plotting", "value")]
 )
 
 # the callback function (i.e. what happens after one of the inputs changes)
-def update_figure(length_range, strand_plotting):
+def update_figure(user_data, length_range, strand_plotting):
 	# specify colour palette in one place, to make custom colours easier later on
 	palette = ["green", "blue", "orange", "red"]
+	# read in user data
+	sRNA_data = parse_user_input(user_data)
 	# create copy of data with desired length only
 	filtered_data = sRNA_data[(sRNA_data.Length >= length_range[0]) & (sRNA_data.Length <= length_range[1])]
 	# if combined strand plotting is specified...
