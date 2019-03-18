@@ -29,11 +29,11 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # specify app components, their data types and their starting values
 app.layout = html.Div([
 	dcc.Graph(id = "graph-with-slider"),
-	dcc.Slider(
+	dcc.RangeSlider(
 		id = "length-slider",
 		min = sRNA_data["Length"].min(),
 		max = sRNA_data["Length"].max(),
-		value = sRNA_data["Length"].min(),
+		value = [sRNA_data["Length"].min(), sRNA_data["Length"].max()],
 		marks = {str(length): str(length) for length in sRNA_data["Length"].unique()}
 	)
 ])
@@ -45,9 +45,9 @@ app.layout = html.Div([
 )
 
 # the callback function (i.e. what happens after one of the inputs changes)
-def update_figure(selected_length):
+def update_figure(length_range):
 	# create copy of data with desired length only
-	filtered_data = sRNA_data[sRNA_data.Length == selected_length]
+	filtered_data = sRNA_data[(sRNA_data.Length >= length_range[0]) & (sRNA_data.Length <= length_range[1])]
 	# specify colour palette in one place, to make custom colours easier later on
 	palette = ["green", "blue", "orange", "red"]
 	# create each 5' base strand as a separate bar
