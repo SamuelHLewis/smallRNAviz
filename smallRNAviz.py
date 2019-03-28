@@ -74,7 +74,7 @@ app.layout = html.Div([
 	),
 ])
 
-# function to parse a user CSV file
+# function to parse a user bam file
 def bam_to_sRNA_counts(contents):
 	"""
 	This function takes a bam file, and returns a pandas dataframe of counts for sRNAs of each length, with separate counts for each strand and 5' base
@@ -82,9 +82,6 @@ def bam_to_sRNA_counts(contents):
 	# set up dataframe for sRNA data
 	sRNA_data = pd.DataFrame(columns = ["Sequence", "Strand"])
 	# read file contents
-	#content_string = contents.split(",")[1]
-	#decoded = base64.b64decode(content_string)
-	#bam_contents = pysam.AlignmentFile(io.StringIO(decoded.decode('utf-8')), "rb")
 	bam_contents = pysam.AlignmentFile(contents, "rb")
 	sense_seqs = []
 	antisense_seqs = []
