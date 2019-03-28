@@ -8,6 +8,8 @@ import base64
 import io
 import pandas as pd
 import plotly.graph_objs as go
+import pysam
+from Bio.Seq import Seq
 
 # specify page formatting template
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
@@ -73,11 +75,76 @@ app.layout = html.Div([
 ])
 
 # function to parse a user CSV file
-def parse_user_input(contents):
-	content_string = contents.split(",")[1]
-	decoded = base64.b64decode(content_string)
-	df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
-	return df
+def bam_to_sRNA_counts(contents):
+	"""
+	This function takes a bam file, and returns a pandas dataframe of counts for sRNAs of each length, with separate counts for each strand and 5' base
+	"""
+	# set up dataframe for sRNA data
+	sRNA_data = pd.DataFrame(columns = ["Sequence", "Strand"])
+	# read file contents
+	#content_string = contents.split(",")[1]
+	#decoded = base64.b64decode(content_string)
+	#bam_contents = pysam.AlignmentFile(io.StringIO(decoded.decode('utf-8')), "rb")
+	bam_contents = pysam.AlignmentFile(contents, "rb")
+	sense_seqs = []
+	antisense_seqs = []
+	for line in bam_contents:
+		# isolate the cigar string (6th field)
+		line_contents = str(line).split("\t")
+		cigar = line_contents[5]
+		# keep only mapped reads
+		if cigar.endswith("M"):
+			# isolate their strand and sequence fields
+			strand = line_contents[1]
+			seq = line_contents[9]
+			if line_contents[1] == "16":
+				sRNA_data = sRNA_data.append({"Sequence": str(Seq(seq).reverse_complement()), "Strand": "-"}, ignore_index = True)
+			else:
+				sRNA_data = sRNA_data.append({"Sequence": seq, "Strand": "+"}, ignore_index = True)
+	# add a length column
+	sRNA_data["Length"] = sRNA_data.apply(lambda row: len(row["Sequence"]), axis = 1)
+	# add a 5' base column
+	sRNA_data["5base"] = sRNA_data.apply(lambda row: row["Sequence"][0], axis = 1)
+	# create blank dataframe to hold counts of each base-strand combination for each length
+	sRNA_counts = pd.DataFrame({
+		"Length": list(range(17,36)),
+		"A_sense": [0 for i in range(17,36)],
+		"C_sense": [0 for i in range(17,36)],
+		"G_sense": [0 for i in range(17,36)],
+		"U_sense": [0 for i in range(17,36)],
+		"A_antisense": [0 for i in range(17,36)],
+		"C_antisense": [0 for i in range(17,36)],
+		"G_antisense": [0 for i in range(17,36)],
+		"U_antisense": [0 for i in range(17,36)]
+	})
+	# set the index as the sRNA lengths
+	sRNA_counts = sRNA_counts.set_index("Length")
+	# go through the bam_contents_df dataframe, updating the counts in the sRNA_counts dataframe
+	# outer loop iterates over each length
+	for length in sRNA_counts.index:
+		# grab all sRNAs that have this length
+		sRNAs_of_desired_length = sRNA_data[sRNA_data["Length"]==length]
+		# check the strand of each sRNA
+		for index, row in sRNAs_of_desired_length.iterrows():
+			if row["Strand"] == "+" and row["5base"] == "A":
+				sRNA_counts.at[length, "A_sense"] += 1
+			elif row["Strand"] == "+" and row["5base"] == "C":
+				sRNA_counts.at[length, "C_sense"] += 1
+			elif row["Strand"] == "+" and row["5base"] == "G":
+				sRNA_counts.at[length, "G_sense"] += 1
+			elif row["Strand"] == "+" and row["5base"] == "T":
+				sRNA_counts.at[length, "U_sense"] += 1
+			elif row["Strand"] == "-" and row["5base"] == "A":
+				sRNA_counts.at[length, "A_antisense"] -= 1
+			elif row["Strand"] == "-" and row["5base"] == "C":
+				sRNA_counts.at[length, "C_antisense"] -= 1
+			elif row["Strand"] == "-" and row["5base"] == "G":
+				sRNA_counts.at[length, "G_antisense"] -= 1
+			elif row["Strand"] == "-" and row["5base"] == "T":
+				sRNA_counts.at[length, "U_antisense"] -= 1
+	# put Length back as a column
+	sRNA_counts.reset_index(inplace = True)
+	return sRNA_counts
 
 # specify which input values the app should listen for, and what it should output
 @app.callback(
@@ -92,7 +159,7 @@ def update_figure(user_data, length_range, strand_plotting):
 	# specify colour palette in one place, to make custom colours easier later on
 	palette = ["green", "blue", "orange", "red"]
 	# read in user data
-	sRNA_data = parse_user_input(user_data)
+	sRNA_data = bam_to_sRNA_counts(user_data)
 	# create copy of data with desired length only
 	filtered_data = sRNA_data[(sRNA_data.Length >= length_range[0]) & (sRNA_data.Length <= length_range[1])]
 	# if combined strand plotting is specified...
