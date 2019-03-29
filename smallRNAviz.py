@@ -2,6 +2,7 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_resumable_upload
 from dash.dependencies import Input, Output
 
 import base64
@@ -35,25 +36,23 @@ sRNA_data = pd.DataFrame({
 # instantiate app object
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
+# wrap the app in the resumable upload decorator
+dash_resumable_upload.decorate_server(app.server, "uploads")
+
+# specify local serving
+app.scripts.config.serve_locally = True
+
 # specify app components, their data types and their starting values
 app.layout = html.Div([
-	html.Div([
-		dcc.Upload(
-			id = "upload-data",
-			children = html.Div(["Drag and drop or ", html.A("Select file")]),
-			style = {
-				"width": "100%",
-				"height": "60px",
-				"lineHeight": "60px",
-				"borderWidth": "1px",
-				"borderStyle": "dashed",
-				"borderRadius": "5px",
-				"textAlign": "center",
-				"margin": "10px"
-			},
-			multiple = False
-		)
-	]),
+	dash_resumable_upload.Upload(
+        	id='upload-data',
+        	maxFiles=1,
+		# maximum upload size currently set to 100GB
+        	maxFileSize=1024*1024*1000*1000,
+        	service="/upload_resumable",
+        	textLabel="Drag and drop BAM file here to upload",
+        	startButton=False
+    	),
 	html.Div([
 		html.Div([
 			dcc.RadioItems(
@@ -146,17 +145,19 @@ def bam_to_sRNA_counts(contents):
 # specify which input values the app should listen for, and what it should output
 @app.callback(
 	Output("sRNA_graph", "figure"),
-	[Input("upload-data", "contents"),
+	[Input("upload-data", "fileNames"),
 	Input("length-slider", "value"),
 	Input("strand-plotting", "value")]
 )
 
 # the callback function (i.e. what happens after one of the inputs changes)
 def update_figure(user_data, length_range, strand_plotting):
+	if user_data is None:
+		return "No BAM file uploaded"
 	# specify colour palette in one place, to make custom colours easier later on
 	palette = ["green", "blue", "orange", "red"]
-	# read in user data
-	sRNA_data = bam_to_sRNA_counts(user_data)
+	# read in user data (the file name is returned as a one-element list, so need to pass it into the bam_to_sRNA_counts function as a string)
+	sRNA_data = bam_to_sRNA_counts(user_data[0])
 	# create copy of data with desired length only
 	filtered_data = sRNA_data[(sRNA_data.Length >= length_range[0]) & (sRNA_data.Length <= length_range[1])]
 	# if combined strand plotting is specified...
