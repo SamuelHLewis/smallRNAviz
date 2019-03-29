@@ -13,20 +13,8 @@ import pysam
 from Bio.Seq import Seq
 
 # specify page formatting template
-external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
-
-# # read in data
-# sRNA_data = pd.DataFrame({
-# 	"Length": range(17,30),
-# 	"A_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
-# 	"C_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
-# 	"G_sense": [10,20,70,200,210,170,70,10,10,100,100,100,100],
-# 	"U_sense": [10,20,70,200,210,170,70,10,1000,2000,2000,1000,100],
-# 	"A_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
-# 	"C_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
-# 	"G_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-10,-100,-100,-100,-100],
-# 	"U_antisense": [-10,-20,-70,-200,-210,-170,-70,-10,-1000,-2000,-2000,-1000,-100]
-# })
+#external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
+external_stylesheets = ["https://codepen.io/rmarren1/pen/eMQKBW.css"]
 
 # create dataframe without any read counts to establish plotting area limits
 sRNA_data = pd.DataFrame({
